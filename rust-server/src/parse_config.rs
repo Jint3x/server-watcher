@@ -17,7 +17,7 @@ pub enum ConfigMode {
 pub enum LogCredentials {
     DiscordLog {
         key: String,
-        channel: String,
+        channel: u64,
     }
 }
 
@@ -28,7 +28,7 @@ pub enum LogType {
 
 #[derive(Debug)]
 pub enum ErrorLogType {
-    TypeNonExistent
+    TypeNonExistent,
 }
 
 #[derive(Debug)]
@@ -137,8 +137,77 @@ pub fn parse_credentials(log_type: LogType) -> LogCredentials {
 
             LogCredentials::DiscordLog {
                 key: discord_key,
-                channel: discord_channel
+                channel: discord_channel.parse::<u64>().expect("Couldn't convert the discord channel to a number")
             }
         }
     }
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use std::env::set_var;
+    use super::ConfigMode;
+
+    use super::parse_mode;
+
+    #[test]
+    fn parse_mode_parses_warn() {
+        set_var("mode", "warn");
+        set_var("ram_limit", "20");
+        set_var("cpu_limit", "20");
+
+        let warn_mode = parse_mode();
+        let test_mode = ConfigMode::ConfigWarn { cpu_limit: 20, ram_limit: 20 };
+
+        match warn_mode {
+            ConfigMode::ConfigWarn { cpu_limit, ram_limit } => {
+                
+                match test_mode {
+                    ConfigMode::ConfigWarn { cpu_limit: cpu_limit_test, ram_limit: ram_limit_test} => {
+                        assert_eq!(cpu_limit, cpu_limit_test);
+                        assert_eq!(ram_limit, ram_limit_test)
+                    },
+                    _ => panic!("")
+                }
+
+            },
+            _ => panic!("")
+        }
+    }
+
+    #[test]
+    fn parse_mode_parses_interval() {
+        set_var("mode", "interval");
+        set_var("ram", "true");
+        set_var("cpu", "true");
+        set_var("cpu_average", "true");
+        set_var("system_uptime", "true");
+
+        let interval_mode = parse_mode();
+        let test_mode = ConfigMode::ConfigInterval {
+            ram: true,
+            cpu: true,
+            cpu_average: true,
+            system_uptime: true
+        };
+
+        match interval_mode {
+            ConfigMode::ConfigInterval { ram, cpu, cpu_average, system_uptime } => {
+                match test_mode {
+                    ConfigMode::ConfigInterval { cpu: cpu_test, ram: ram_test, cpu_average: cpu_average_test, system_uptime: system_uptime_test} => {
+                        assert_eq!(cpu, cpu_test);
+                        assert_eq!(ram, ram_test);
+                        assert_eq!(cpu_average, cpu_average_test);
+                        assert_eq!(system_uptime, system_uptime_test);
+                    },
+                    _ => panic!("")
+                }
+
+            },
+            _ => panic!("Not an interval mode")
+        }
+    }
+
 }
