@@ -19,7 +19,7 @@ pub struct IntervalMetrics {
 
 
 impl IntervalMetrics {
-    pub fn new(config: Config, system: &sysinfo::System) -> IntervalMetrics {
+    pub fn new(config: &Config, system: &sysinfo::System) -> IntervalMetrics {
         if let ConfigMode::ConfigInterval {ram, cpu, system_uptime, cpu_average } = config.mode {
             let mut metrics = IntervalMetrics { ram: -1, cpu: -1.0, system_uptime: -1, cpu_average: (-1.0, -1.0, -1.0) };
         
@@ -76,7 +76,7 @@ mod tests {
             }
         };
 
-        let metrics = IntervalMetrics::new(config, &system);
+        let metrics = IntervalMetrics::new(&config, &system);
 
         assert_ne!(metrics.ram, -1);
         assert_ne!(metrics.cpu, -1.0);
@@ -102,7 +102,7 @@ mod tests {
             }
         };
 
-        IntervalMetrics::new(config, &system);
+        IntervalMetrics::new(&config, &system);
     }
 
 
@@ -124,7 +124,7 @@ mod tests {
             }
         };
 
-        let metrics = IntervalMetrics::new(config, &system);
+        let metrics = IntervalMetrics::new(&config, &system);
 
         assert_ne!(metrics.ram, -1);
         assert_ne!(metrics.cpu, -1.0);
@@ -152,7 +152,7 @@ mod tests {
             }
         };
 
-        let mut metrics = IntervalMetrics::new(config, &system);
+        let mut metrics = IntervalMetrics::new(&config, &system);
         let old_uptime = metrics.system_uptime.clone();
         std::thread::sleep(std::time::Duration::new(1, 0));
         metrics.update_metrics(&mut system);

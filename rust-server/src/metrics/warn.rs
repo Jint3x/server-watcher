@@ -27,7 +27,7 @@ pub struct WarnMetrics {
 
 
 impl WarnMetrics {
-    pub fn new(config: Config) -> WarnMetrics {
+    pub fn new(config: &Config) -> WarnMetrics {
         if let ConfigMode::ConfigWarn { ram_limit, cpu_limit } = config.mode {
             WarnMetrics {
                 ram: ram_limit,
@@ -107,7 +107,7 @@ mod tests {
             }
         };
 
-        let metric_warns = WarnMetrics::new(config);
+        let metric_warns = WarnMetrics::new(&config);
 
         assert_eq!(metric_warns.cpu, 45);
         assert_eq!(metric_warns.ram, 40);
@@ -133,7 +133,7 @@ mod tests {
             }
         };
 
-        WarnMetrics::new(config);
+        WarnMetrics::new(&config);
     }
 
 
