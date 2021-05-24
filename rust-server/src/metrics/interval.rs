@@ -19,9 +19,8 @@ pub struct IntervalMetrics {
 
 
 impl IntervalMetrics {
-    pub fn new(config: Config) -> IntervalMetrics {
+    pub fn new(config: Config, system: &sysinfo::System) -> IntervalMetrics {
         if let ConfigMode::ConfigInterval {ram, cpu, system_uptime, cpu_average } = config.mode {
-            let system = sysinfo::System::new_all();
             let mut metrics = IntervalMetrics { ram: -1, cpu: -1.0, system_uptime: -1, cpu_average: (-1.0, -1.0, -1.0) };
         
             // Check each metric, if it is enabled, set it.
@@ -39,8 +38,8 @@ impl IntervalMetrics {
         }
     }
 
-    pub fn update_metrics(&mut self) {
-        let system = sysinfo::System::new_all();
+    pub fn update_metrics(&mut self, system: &mut sysinfo::System) {
+        system.refresh_all();
         
         if self.ram > -1 { self.ram = system.get_used_memory() as i64 }
         if self.cpu > -1.0 { self.cpu = system.get_global_processor_info().get_cpu_usage() }
@@ -57,9 +56,11 @@ impl IntervalMetrics {
 mod tests {
     use super::super::super::parse_config::{Config, ConfigMode, LogType, LogCredentials};
     use super::IntervalMetrics;
+    use sysinfo::{self, SystemExt};
 
     #[test]
     pub fn intervalmetrics_new_creates() {
+        let system = sysinfo::System::new_all();
         let config = Config {
             mode: ConfigMode::ConfigInterval {
                 ram: true,
@@ -75,7 +76,7 @@ mod tests {
             }
         };
 
-        let metrics = IntervalMetrics::new(config);
+        let metrics = IntervalMetrics::new(config, &system);
 
         assert_ne!(metrics.ram, -1);
         assert_ne!(metrics.cpu, -1.0);
@@ -87,6 +88,7 @@ mod tests {
     #[test]
     #[should_panic = "The passed config mode does not have ConfigInterval as its mode."]
     fn intervalmetrics_new_wrong_mode() {
+        let system = sysinfo::System::new_all();
         let config = Config {
             mode: ConfigMode::ConfigWarn {
                 cpu_limit: 20,
@@ -100,12 +102,13 @@ mod tests {
             }
         };
 
-        IntervalMetrics::new(config);
+        IntervalMetrics::new(config, &system);
     }
 
 
     #[test]
     fn intervalmetrics_partly_enabled() {
+        let system = sysinfo::System::new_all();
         let config = Config {
             mode: ConfigMode::ConfigInterval {
                 ram: true,
@@ -121,7 +124,7 @@ mod tests {
             }
         };
 
-        let metrics = IntervalMetrics::new(config);
+        let metrics = IntervalMetrics::new(config, &system);
 
         assert_ne!(metrics.ram, -1);
         assert_ne!(metrics.cpu, -1.0);
@@ -133,6 +136,7 @@ mod tests {
     // and perhaps change it with a better way of chaking the metrics updates.
     #[test]
     fn intervalmetrics_update_metrics_updates() {
+        let mut system = sysinfo::System::new_all();
         let config = Config {
             mode: ConfigMode::ConfigInterval {
                 ram: false,
@@ -148,10 +152,10 @@ mod tests {
             }
         };
 
-        let mut metrics = IntervalMetrics::new(config);
+        let mut metrics = IntervalMetrics::new(config, &system);
         let old_uptime = metrics.system_uptime.clone();
         std::thread::sleep(std::time::Duration::new(1, 0));
-        metrics.update_metrics();
+        metrics.update_metrics(&mut system);
 
 
         assert_ne!(old_uptime, metrics.system_uptime);
