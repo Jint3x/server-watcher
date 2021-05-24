@@ -1,14 +1,14 @@
 use super::super::super::parse_config::{LogType, Config, LogCredentials, ConfigMode};
 
-pub fn parse_token_and_channel(config: Config) -> (String, u64) {
-    let log_type = config.log_type;
-    let log_credentials = config.log_credentials;
+pub fn parse_token_and_channel(config: &Config) -> (String, u64) {
+    let log_type = &config.log_type;
+    let log_credentials = &config.log_credentials;
 
-    if log_type != LogType::Discord { panic!("The current logging mode is not set to discord") }
+    if log_type != &LogType::Discord { panic!("The current logging mode is not set to discord") }
 
     match log_credentials {
         LogCredentials::DiscordLog { key, channel } => {
-            (key, channel)
+            (key.clone(), channel.clone())
         },
         _ => panic!("Wrong log credentials are being used")
     }
@@ -34,7 +34,7 @@ mod tests {
             }
         };
 
-        let (key, channel) = parse_token_and_channel(dummy_config);
+        let (key, channel) = parse_token_and_channel(&dummy_config);
 
         assert_eq!(key, "test".to_string());
         assert_eq!(channel, 098823098234);

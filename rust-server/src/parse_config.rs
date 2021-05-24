@@ -34,7 +34,7 @@ pub enum ErrorLogType {
 #[derive(Debug, PartialEq)]
 // Contains all information about the current config used in the environment file
 pub struct Config {
-    // What mode it will be, each mode will be packed with its specific items
+    // What mode will be used, each mode will be packed with its specific items
     pub mode: ConfigMode,
 
     // How often should the program run
@@ -113,6 +113,7 @@ fn get_interval_mode() -> ConfigMode {
 pub fn parse_env_var_to_boolean(env: &str) -> bool {
     std::env::var(env)
     .unwrap_or("false".to_string())
+    .trim()
     .parse::<bool>()
     .expect("Couldn't parse the parameter to a boolean") // Might need a better error message
 }
