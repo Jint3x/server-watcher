@@ -1,4 +1,5 @@
 use serenity::{
+    builder::CreateEmbed,
     http::{self, Http},
     model::{id::ChannelId}
 };
@@ -11,7 +12,7 @@ use super::super::metrics::{
 use sysinfo::{System, SystemExt};
 use super::super::parse_config::{Config, ConfigMode};
 
-use tokio;
+use tokio::{self};
 mod parsers;
 
 
@@ -68,31 +69,7 @@ async fn send_interval_message(
         discord_channel.send_message(&discord_connection, |msg| {
             msg.embed(|emb| {
                 emb.title("Server Interval Metrics");
-
-                // Check for each metric, if it is bigger than -1 (disabled), add it to the embed
-                if metrics.ram > -1 {
-                    emb.field("Used RAM", format!("{} MB", metrics.ram / 1000), false);
-                };
-
-                if metrics.cpu > -1.0 {
-                    emb.field("Used CPU", format!("{}%", metrics.cpu), false);
-                }
-
-                if metrics.system_uptime > -1 {
-                    emb.field("System Uptime", format!("{} minutes", metrics.system_uptime / 60), false);
-                }
-
-                if metrics.cpu_average.0 > -1.0 {
-                    emb.field(
-                        "Average Load",
-                        format!(
-                                "One minute: {}%, Five minutes: {}%, Fiveteen minutes: {}%", 
-                                metrics.cpu_average.0, metrics.cpu_average.1, metrics.cpu_average.2
-                              ),
-                             false
-                    );
-                }
-
+                load_interval_embed(emb, &metrics);
                 emb
             });
 
@@ -103,6 +80,32 @@ async fn send_interval_message(
     }
 }
 
+
+// Check each interval metric. If it's above -1 (enabled), append in to the embed.
+fn load_interval_embed(embed: &mut CreateEmbed, metrics: &IntervalMetrics) {
+    if metrics.ram > -1 {
+        embed.field("Used RAM", format!("{} MB", metrics.ram / 1000), false);
+    };
+
+    if metrics.cpu > -1.0 {
+        embed.field("Used CPU", format!("{}%", metrics.cpu), false);
+    }
+
+    if metrics.system_uptime > -1 {
+        embed.field("System Uptime", format!("{} minutes", metrics.system_uptime / 60), false);
+    }
+
+    if metrics.cpu_average.0 > -1.0 {
+        embed.field(
+            "Average Load",
+            format!(
+                    "One minute: {}%, Five minutes: {}%, Fiveteen minutes: {}%", 
+                    metrics.cpu_average.0, metrics.cpu_average.1, metrics.cpu_average.2
+                  ),
+                 false
+        );
+    }
+}
 
 
 async fn send_warn_message(
@@ -120,16 +123,7 @@ async fn send_warn_message(
         discord_channel.send_message(&discord_connection, |msg| {
             msg.embed(|emb| {
                 emb.title("Server Warn Metrics");
-                
-                emb.fields(
-                    metrics.warnings.iter().map(|metric| {
-                        match metric {
-                            &Warn::HighCPU(cpu) => ("CPU Limit Surpassed", format!("{}%", cpu), false),
-                            &Warn::HighRAM(ram) => ("RAM Limit Surpassed", format!("{}%", ram), false)
-                        }
-                    })
-                );
-
+                load_warn_embed(emb, &metrics);
                 emb
             });
 
@@ -138,4 +132,17 @@ async fn send_warn_message(
         .await
         .expect("Couldn't send a message to this channel");
     }
+}
+
+
+// Check each warn metric, create a separate embed field for it and set it on the embed.
+fn load_warn_embed(embed: &mut CreateEmbed, metrics: &WarnMetrics) {
+    embed.fields(
+        metrics.warnings.iter().map(|metric| {
+            match metric {
+                &Warn::HighCPU(cpu) => ("CPU Limit Surpassed", format!("{}%", cpu), false),
+                &Warn::HighRAM(ram) => ("RAM Limit Surpassed", format!("{}%", ram), false)
+            }
+        })
+    );
 }
