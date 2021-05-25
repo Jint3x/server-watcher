@@ -20,7 +20,7 @@ mod parsers;
 
 
 
-#[tokio::main] // Do a git commit later 
+#[tokio::main]
 pub async fn start(config: Config) {
     let (token, channel) = parsers::parse_token_and_channel(&config);
     let system = System::new_all();
