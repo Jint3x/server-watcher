@@ -62,6 +62,7 @@ impl IntervalMetrics {
     }
 
 
+    // Check which metric is enabled and update it. 
     pub fn update_metrics(&mut self, system: &mut sysinfo::System) {
         system.refresh_all();
         

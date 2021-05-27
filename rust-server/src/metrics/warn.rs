@@ -94,7 +94,7 @@ impl WarnMetrics {
 // If it is, return the % of the metric that is used to the warn vector.
 fn above_limit(metric_limit: f64, total_metric: f64, used_metric: f64, metric_type: MetricType) -> Result<Warn, bool> {
     let used_percentage = (used_metric / total_metric) * 100.0;
-    println!("{}, {}, {}", total_metric, used_metric, used_percentage);
+
     if used_percentage > metric_limit {
         match metric_type {
             MetricType::RAM => Ok(Warn::HighRAM(used_percentage as f32)),
