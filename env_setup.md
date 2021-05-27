@@ -35,6 +35,7 @@ ram=true
 cpu=true
 cpu_average=false
 system_uptime=false
+disk=true
 ```
 
 <br />
@@ -45,6 +46,7 @@ When using the warn mode, you need to specify the following parameters (which wo
 ```
 ram_limit=10
 cpu_limit=67
+disk_limit=15
 ```
 
 <br />
