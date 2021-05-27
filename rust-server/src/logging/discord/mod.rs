@@ -6,7 +6,7 @@ use serenity::{
 
 use super::super::metrics::{
     interval::IntervalMetrics,
-    warn::WarnMetrics, warn::Warn
+    warn::{WarnMetrics, Warn},
 };
 
 use sysinfo::{System, SystemExt};
@@ -28,9 +28,14 @@ pub async fn start(config: Config) {
     let channel_connection = ChannelId(channel);
 
 
-
     match config.mode {
-        ConfigMode::ConfigInterval {ram: _ram, cpu: _cpu, cpu_average: _cpu_average, system_uptime: _system_uptime} => {
+        ConfigMode::ConfigInterval {
+            ram: _ram,
+            cpu: _cpu,
+            cpu_average: _cpu_average,
+            system_uptime: _system_uptime,
+            disk: _disk,
+        } => {
             send_interval_message(
           IntervalMetrics::new(&config, &system),
                  system,
@@ -40,7 +45,11 @@ pub async fn start(config: Config) {
             )
             .await
         },
-        ConfigMode::ConfigWarn {cpu_limit: _cpu_limit, ram_limit: _ram_limit} => {
+        ConfigMode::ConfigWarn {
+            cpu_limit: _cpu_limit,
+            ram_limit: _ram_limit,
+            disk_limit: _disk_limit,
+        } => {
             send_warn_message(
         WarnMetrics::new(&config), 
                 system, 
@@ -95,6 +104,10 @@ fn load_interval_embed(embed: &mut CreateEmbed, metrics: &IntervalMetrics) {
         embed.field("System Uptime", format!("{} minutes", metrics.system_uptime / 60), false);
     }
 
+    if metrics.disk > -1 {
+        embed.field("Used System Space:", format!("{} MB", metrics.disk), false);
+    }
+
     if metrics.cpu_average.0 > -1.0 {
         embed.field(
             "Average Load",
@@ -141,7 +154,8 @@ fn load_warn_embed(embed: &mut CreateEmbed, metrics: &WarnMetrics) {
         metrics.warnings.iter().map(|metric| {
             match metric {
                 &Warn::HighCPU(cpu) => ("CPU Limit Surpassed", format!("{}%", cpu), false),
-                &Warn::HighRAM(ram) => ("RAM Limit Surpassed", format!("{}%", ram), false)
+                &Warn::HighRAM(ram) => ("RAM Limit Surpassed", format!("{}%", ram), false),
+                &Warn::HighDisk(disk) => ("Disk Limit Surpassed", format!("{}%", disk), false)
             }
         })
     );

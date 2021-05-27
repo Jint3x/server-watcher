@@ -1,16 +1,19 @@
 use sysinfo::{ProcessorExt, SystemExt, System};
 use super::super::parse_config::{Config, ConfigMode};
+use super::{get_total_disk_space, get_used_disk_space};
 
 #[derive(Debug, PartialEq)]
 pub enum Warn {
     HighRAM(f32),
-    HighCPU(f32)
+    HighCPU(f32),
+    HighDisk(f32),
 }
 
 
 pub enum MetricType {
     RAM,
-    CPU
+    CPU,
+    Disk,
 }
 
 
@@ -21,6 +24,9 @@ pub struct WarnMetrics {
     // CPU Limit (%)
     pub cpu: u32,
 
+    // Disk usage (%) from all disks combined
+    pub disk: u32,
+
     // List of warnings for the different metrics if they go above limit
     pub warnings: Vec<Warn>
 }
@@ -28,10 +34,11 @@ pub struct WarnMetrics {
 
 impl WarnMetrics {
     pub fn new(config: &Config) -> WarnMetrics {
-        if let ConfigMode::ConfigWarn { ram_limit, cpu_limit } = config.mode {
+        if let ConfigMode::ConfigWarn { ram_limit, cpu_limit, disk_limit } = config.mode {
             WarnMetrics {
                 ram: ram_limit,
                 cpu: cpu_limit,
+                disk: disk_limit,
                 warnings: vec![]
             }
         } else {
@@ -54,7 +61,8 @@ impl WarnMetrics {
             );
 
             if let Ok(warn) = limit { self.warnings.push(warn) }
-        }
+        } 
+
         // Check system CPU
         if self.cpu > 0 {
             let limit = above_limit(
@@ -62,6 +70,18 @@ impl WarnMetrics {
     100 as f64,
      system.get_global_processor_info().get_cpu_usage() as f64,
                 MetricType::CPU
+            );
+
+            if let Ok(warn) = limit { self.warnings.push(warn) }
+        }
+
+        // Check system space
+        if self.disk > 0 {
+            let limit = above_limit(
+    self.disk as f64, 
+    get_total_disk_space(system.get_disks()), 
+     get_used_disk_space(system.get_disks()) as f64, 
+                MetricType::Disk
             );
 
             if let Ok(warn) = limit { self.warnings.push(warn) }
@@ -74,11 +94,12 @@ impl WarnMetrics {
 // If it is, return the % of the metric that is used to the warn vector.
 fn above_limit(metric_limit: f64, total_metric: f64, used_metric: f64, metric_type: MetricType) -> Result<Warn, bool> {
     let used_percentage = (used_metric / total_metric) * 100.0;
-
+    println!("{}, {}, {}", total_metric, used_metric, used_percentage);
     if used_percentage > metric_limit {
         match metric_type {
             MetricType::RAM => Ok(Warn::HighRAM(used_percentage as f32)),
-            MetricType::CPU => Ok(Warn::HighCPU(used_percentage as f32))
+            MetricType::CPU => Ok(Warn::HighCPU(used_percentage as f32)),
+            MetricType::Disk => Ok(Warn::HighDisk(used_percentage as f32))
         }
     } else {
         Err(false)
@@ -98,6 +119,7 @@ mod tests {
             mode: ConfigMode::ConfigWarn {
                 ram_limit: 40,
                 cpu_limit: 45,
+                disk_limit: 50,
             },
             interval: 10,
             log_type: LogType::Discord,
@@ -111,6 +133,7 @@ mod tests {
 
         assert_eq!(metric_warns.cpu, 45);
         assert_eq!(metric_warns.ram, 40);
+        assert_eq!(metric_warns.disk, 50);
         assert_eq!(metric_warns.warnings.len(), 0);
     }
 
@@ -123,7 +146,8 @@ mod tests {
                 ram: true,
                 cpu: true,
                 cpu_average: true,
-                system_uptime: true
+                system_uptime: true,
+                disk: true,
             },
             interval: 10,
             log_type: LogType::Discord,

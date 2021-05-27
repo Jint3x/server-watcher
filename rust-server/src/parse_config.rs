@@ -4,12 +4,14 @@ pub enum ConfigMode {
         ram: bool,
         cpu: bool,
         system_uptime: bool,
-        cpu_average: bool
+        cpu_average: bool,
+        disk: bool,
     },
 
     ConfigWarn {
         cpu_limit: u32,
-        ram_limit: u32
+        ram_limit: u32,
+        disk_limit: u32,
     }
 }
 
@@ -91,11 +93,17 @@ fn get_warn_mode() -> ConfigMode {
     .parse::<u32>()
     .expect("Couldn't parse the cpu_limit to a number");
 
+    let disk_limit = std::env::var("disk_limit")
+    .expect("cpu_limit variable not specified")
+    .parse::<u32>()
+    .expect("Couldn't parse the cpu_limit to a number");
+
     if ram_limit > 100 || cpu_limit > 100 { panic!("The ram/cpu limit cannot exceed 100%") };
 
     ConfigMode::ConfigWarn {
         ram_limit,
-        cpu_limit
+        cpu_limit,
+        disk_limit,
     }
 }
 
@@ -105,7 +113,8 @@ fn get_interval_mode() -> ConfigMode {
         ram: parse_env_var_to_boolean("ram"),
         cpu: parse_env_var_to_boolean("cpu"),
         cpu_average: parse_env_var_to_boolean("cpu_average"),
-        system_uptime: parse_env_var_to_boolean("system_uptime")
+        system_uptime: parse_env_var_to_boolean("system_uptime"),
+        disk: parse_env_var_to_boolean("disk"),
     }
 }
 
@@ -158,6 +167,7 @@ mod tests {
         set_var("mode", "warn");
         set_var("ram_limit", "20");
         set_var("cpu_limit", "20");
+        set_var("disk_limit", "10");
         set_var("interval", "10");
         set_var("type", "discord");
         set_var("discord_key", "special_secret_key");
@@ -168,6 +178,7 @@ mod tests {
             mode: ConfigMode::ConfigWarn {
                 ram_limit: 20,
                 cpu_limit: 20,
+                disk_limit: 10,
             },
             interval: 10,
             log_type: LogType::Discord,
@@ -186,9 +197,14 @@ mod tests {
         set_var("mode", "warn");
         set_var("ram_limit", "20");
         set_var("cpu_limit", "20");
+        set_var("disk_limit", "10");
 
         let warn_mode = parse_mode();
-        let test_mode = ConfigMode::ConfigWarn { cpu_limit: 20, ram_limit: 20 };
+        let test_mode = ConfigMode::ConfigWarn { 
+            cpu_limit: 20,
+            ram_limit: 20,
+            disk_limit: 10,
+        };
 
         assert_eq!(warn_mode, test_mode);
     }
@@ -200,6 +216,7 @@ mod tests {
         set_var("mode", "warn");
         set_var("ram_limit", "will not parse");
         set_var("cpu_limit", "will not parse");
+        set_var("disk_limit", "will not parse");
 
         parse_mode();
     }
@@ -210,6 +227,7 @@ mod tests {
     fn parse_mode_panics_not_set_warn() {
         set_var("mode", "warn");
         set_var("cpu_limit", "20");
+        set_var("disk_limit", "20");
         remove_var("ram_limit");
 
         parse_mode();
@@ -223,13 +241,15 @@ mod tests {
         set_var("cpu", "true");
         set_var("cpu_average", "true");
         set_var("system_uptime", "true");
+        set_var("disk", "true");
 
         let interval_mode = parse_mode();
         let test_mode = ConfigMode::ConfigInterval {
             ram: true,
             cpu: true,
             cpu_average: true,
-            system_uptime: true
+            system_uptime: true,
+            disk: true,
         };
 
         assert_eq!(interval_mode, test_mode);

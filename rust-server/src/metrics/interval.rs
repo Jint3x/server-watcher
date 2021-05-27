@@ -1,5 +1,6 @@
 use super::super::parse_config::{Config, ConfigMode};
 use sysinfo::{ProcessorExt, SystemExt};
+use super::{get_used_disk_space};
 
 #[derive(Debug, PartialEq)]
 pub struct IntervalMetrics {
@@ -13,20 +14,42 @@ pub struct IntervalMetrics {
     pub system_uptime: i64,
 
     // CPU average for the past 1, 5 and 15 minutes.
-    pub cpu_average: (f64, f64, f64)
+    pub cpu_average: (f64, f64, f64),
+
+    // Currently used disk space [In MB]
+    pub disk: i64,
 }
 
 
 
 impl IntervalMetrics {
     pub fn new(config: &Config, system: &sysinfo::System) -> IntervalMetrics {
-        if let ConfigMode::ConfigInterval {ram, cpu, system_uptime, cpu_average } = config.mode {
-            let mut metrics = IntervalMetrics { ram: -1, cpu: -1.0, system_uptime: -1, cpu_average: (-1.0, -1.0, -1.0) };
+        if let ConfigMode::ConfigInterval {
+            ram,
+            cpu, 
+            system_uptime, 
+            cpu_average,
+            disk,
+        } = config.mode {
+            // Create a struct which will be filled with actual values only if the passed config has them enabled
+            // -1 is used as an error (false) code.
+            let mut metrics = IntervalMetrics { 
+                ram: -1,
+                cpu: -1.0,
+                system_uptime: -1,
+                cpu_average: (-1.0, -1.0, -1.0),
+                disk: -1,
+            };
         
             // Check each metric, if it is enabled, set it.
             if ram { metrics.ram = system.get_used_memory() as i64 };
+
             if cpu { metrics.cpu = system.get_global_processor_info().get_cpu_usage() }
+            
             if system_uptime { metrics.system_uptime = system.get_uptime() as i64 }
+
+            if disk { metrics.disk = get_used_disk_space(system.get_disks()) }
+
             if cpu_average { 
                 let avg_load = system.get_load_average();
                 metrics.cpu_average = (avg_load.one, avg_load.five, avg_load.fifteen);
@@ -38,12 +61,18 @@ impl IntervalMetrics {
         }
     }
 
+
     pub fn update_metrics(&mut self, system: &mut sysinfo::System) {
         system.refresh_all();
         
         if self.ram > -1 { self.ram = system.get_used_memory() as i64 }
+
         if self.cpu > -1.0 { self.cpu = system.get_global_processor_info().get_cpu_usage() }
+
         if self.system_uptime > -1 { self.system_uptime = system.get_uptime() as i64 }
+
+        if self.disk > -1 { self.disk = get_used_disk_space(system.get_disks()) }
+
         if self.cpu_average.0 > -1.0 {
             let avg_load = system.get_load_average();
             self.cpu_average = (avg_load.one, avg_load.five, avg_load.fifteen);
@@ -55,8 +84,9 @@ impl IntervalMetrics {
 #[cfg(test)]
 mod tests {
     use super::super::super::parse_config::{Config, ConfigMode, LogType, LogCredentials};
-    use super::IntervalMetrics;
+    use super::{IntervalMetrics};
     use sysinfo::{self, SystemExt};
+
 
     #[test]
     pub fn intervalmetrics_new_creates() {
@@ -66,7 +96,8 @@ mod tests {
                 ram: true,
                 cpu: true,
                 cpu_average: true,
-                system_uptime: true
+                system_uptime: true,
+                disk: true,
             },
             interval: 10,
             log_type: LogType::Discord,
@@ -79,6 +110,7 @@ mod tests {
         let metrics = IntervalMetrics::new(&config, &system);
 
         assert_ne!(metrics.ram, -1);
+        assert_ne!(metrics.disk, -1);
         assert_ne!(metrics.cpu, -1.0);
         assert_ne!(metrics.cpu_average, (-1.0, -1.0, -1.0));
         assert_ne!(metrics.system_uptime, -1);
@@ -92,7 +124,8 @@ mod tests {
         let config = Config {
             mode: ConfigMode::ConfigWarn {
                 cpu_limit: 20,
-                ram_limit: 20
+                ram_limit: 20,
+                disk_limit: 20,
             },
             interval: 10,
             log_type: LogType::Discord,
@@ -114,7 +147,8 @@ mod tests {
                 ram: true,
                 cpu: true,
                 cpu_average: false,
-                system_uptime: false
+                system_uptime: false,
+                disk: true,
             },
             interval: 10,
             log_type: LogType::Discord,
@@ -130,7 +164,9 @@ mod tests {
         assert_ne!(metrics.cpu, -1.0);
         assert_eq!(metrics.cpu_average, (-1.0, -1.0, -1.0));
         assert_eq!(metrics.system_uptime, -1);
+        assert_ne!(metrics.disk, -1);
     }
+
 
     // This test might not be the best one possible. Make sure to review it 
     // and perhaps change it with a better way of chaking the metrics updates.
@@ -142,7 +178,8 @@ mod tests {
                 ram: false,
                 cpu: false,
                 cpu_average: false,
-                system_uptime: true
+                system_uptime: true,
+                disk: false,
             },
             interval: 10,
             log_type: LogType::Discord,
