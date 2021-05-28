@@ -35,6 +35,7 @@ pub async fn start(config: Config) {
             cpu_average: _cpu_average,
             system_uptime: _system_uptime,
             disk: _disk,
+            swap: _swap,
         } => {
             send_interval_message(
           IntervalMetrics::new(&config, &system),
@@ -49,6 +50,7 @@ pub async fn start(config: Config) {
             cpu_limit: _cpu_limit,
             ram_limit: _ram_limit,
             disk_limit: _disk_limit,
+            swap_limit: _swap_limit
         } => {
             send_warn_message(
         WarnMetrics::new(&config), 
@@ -95,6 +97,10 @@ fn load_interval_embed(embed: &mut CreateEmbed, metrics: &IntervalMetrics) {
     if metrics.ram > -1 {
         embed.field("Used RAM", format!("{} MB", metrics.ram / 1000), false);
     };
+
+    if metrics.swap > -1 {
+        embed.field("Used Swap", format!("{} MB", metrics.swap / 1000), false);
+    }
 
     if metrics.cpu > -1.0 {
         embed.field("Used CPU", format!("{}%", metrics.cpu), false);
@@ -155,7 +161,8 @@ fn load_warn_embed(embed: &mut CreateEmbed, metrics: &WarnMetrics) {
             match metric {
                 &Warn::HighCPU(cpu) => ("CPU Limit Surpassed", format!("{}%", cpu), false),
                 &Warn::HighRAM(ram) => ("RAM Limit Surpassed", format!("{}%", ram), false),
-                &Warn::HighDisk(disk) => ("Disk Limit Surpassed", format!("{}%", disk), false)
+                &Warn::HighDisk(disk) => ("Disk Limit Surpassed", format!("{}%", disk), false),
+                &Warn::HighSwap(swap) => ("Swap Limit Surpassed", format!("{}%", swap), false),
             }
         })
     );

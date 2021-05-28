@@ -18,6 +18,9 @@ pub struct IntervalMetrics {
 
     // Currently used disk space [In MB]
     pub disk: i64,
+
+    // Currently used Swap in KB
+    pub swap: i64,
 }
 
 
@@ -30,6 +33,7 @@ impl IntervalMetrics {
             system_uptime, 
             cpu_average,
             disk,
+            swap,
         } = config.mode {
             // Create a struct which will be filled with actual values only if the passed config has them enabled
             // -1 is used as an error (false) code.
@@ -39,6 +43,7 @@ impl IntervalMetrics {
                 system_uptime: -1,
                 cpu_average: (-1.0, -1.0, -1.0),
                 disk: -1,
+                swap: -1,
             };
         
             // Check each metric, if it is enabled, set it.
@@ -49,6 +54,8 @@ impl IntervalMetrics {
             if system_uptime { metrics.system_uptime = system.get_uptime() as i64 }
 
             if disk { metrics.disk = get_used_disk_space(system.get_disks()) }
+
+            if swap { metrics.swap = system.get_used_swap() as i64 }
 
             if cpu_average { 
                 let avg_load = system.get_load_average();
@@ -73,6 +80,8 @@ impl IntervalMetrics {
         if self.system_uptime > -1 { self.system_uptime = system.get_uptime() as i64 }
 
         if self.disk > -1 { self.disk = get_used_disk_space(system.get_disks()) }
+
+        if self.swap > -1 { self.swap = system.get_used_swap() as i64 } 
 
         if self.cpu_average.0 > -1.0 {
             let avg_load = system.get_load_average();
@@ -99,6 +108,7 @@ mod tests {
                 cpu_average: true,
                 system_uptime: true,
                 disk: true,
+                swap: true,
             },
             interval: 10,
             log_type: LogType::Discord,
@@ -115,6 +125,7 @@ mod tests {
         assert_ne!(metrics.cpu, -1.0);
         assert_ne!(metrics.cpu_average, (-1.0, -1.0, -1.0));
         assert_ne!(metrics.system_uptime, -1);
+        assert_ne!(metrics.swap, -1);
     }
 
 
@@ -127,6 +138,7 @@ mod tests {
                 cpu_limit: 20,
                 ram_limit: 20,
                 disk_limit: 20,
+                swap_limit: 15,
             },
             interval: 10,
             log_type: LogType::Discord,
@@ -150,6 +162,7 @@ mod tests {
                 cpu_average: false,
                 system_uptime: false,
                 disk: true,
+                swap: false,
             },
             interval: 10,
             log_type: LogType::Discord,
@@ -166,6 +179,7 @@ mod tests {
         assert_eq!(metrics.cpu_average, (-1.0, -1.0, -1.0));
         assert_eq!(metrics.system_uptime, -1);
         assert_ne!(metrics.disk, -1);
+        assert_eq!(metrics.swap, -1);
     }
 
 
@@ -181,6 +195,7 @@ mod tests {
                 cpu_average: false,
                 system_uptime: true,
                 disk: false,
+                swap: false,
             },
             interval: 10,
             log_type: LogType::Discord,

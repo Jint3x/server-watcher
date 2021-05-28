@@ -7,6 +7,7 @@ pub enum Warn {
     HighRAM(f32),
     HighCPU(f32),
     HighDisk(f32),
+    HighSwap(f32),
 }
 
 
@@ -14,6 +15,7 @@ pub enum MetricType {
     RAM,
     CPU,
     Disk,
+    Swap,
 }
 
 
@@ -27,6 +29,9 @@ pub struct WarnMetrics {
     // Disk usage (%) from all disks combined
     pub disk: u32,
 
+    // Swap usage (%)
+    pub swap: u32,
+
     // List of warnings for the different metrics if they go above limit
     pub warnings: Vec<Warn>
 }
@@ -34,12 +39,13 @@ pub struct WarnMetrics {
 
 impl WarnMetrics {
     pub fn new(config: &Config) -> WarnMetrics {
-        if let ConfigMode::ConfigWarn { ram_limit, cpu_limit, disk_limit } = config.mode {
+        if let ConfigMode::ConfigWarn { ram_limit, cpu_limit, disk_limit, swap_limit } = config.mode {
             WarnMetrics {
                 ram: ram_limit,
                 cpu: cpu_limit,
                 disk: disk_limit,
-                warnings: vec![]
+                swap: swap_limit,
+                warnings: vec![],
             }
         } else {
             panic!("The passed config mode does not have ConfigWarn as its mode.")
@@ -86,6 +92,17 @@ impl WarnMetrics {
 
             if let Ok(warn) = limit { self.warnings.push(warn) }
         }
+
+        if self.swap > 0 {
+            let limit = above_limit(
+    self.swap as f64, 
+    system.get_total_swap() as f64, 
+     system.get_used_swap() as f64, 
+                MetricType::Swap
+            );
+
+            if let Ok(warn) = limit { self.warnings.push(warn) }
+        }
     }
 }
 
@@ -94,12 +111,13 @@ impl WarnMetrics {
 // If it is, return the % of the metric that is used to the warn vector.
 fn above_limit(metric_limit: f64, total_metric: f64, used_metric: f64, metric_type: MetricType) -> Result<Warn, bool> {
     let used_percentage = (used_metric / total_metric) * 100.0;
-
+    
     if used_percentage > metric_limit {
         match metric_type {
             MetricType::RAM => Ok(Warn::HighRAM(used_percentage as f32)),
             MetricType::CPU => Ok(Warn::HighCPU(used_percentage as f32)),
-            MetricType::Disk => Ok(Warn::HighDisk(used_percentage as f32))
+            MetricType::Disk => Ok(Warn::HighDisk(used_percentage as f32)),
+            MetricType::Swap => Ok(Warn::HighSwap(used_percentage as f32)),
         }
     } else {
         Err(false)
@@ -120,6 +138,7 @@ mod tests {
                 ram_limit: 40,
                 cpu_limit: 45,
                 disk_limit: 50,
+                swap_limit: 34,
             },
             interval: 10,
             log_type: LogType::Discord,
@@ -134,6 +153,7 @@ mod tests {
         assert_eq!(metric_warns.cpu, 45);
         assert_eq!(metric_warns.ram, 40);
         assert_eq!(metric_warns.disk, 50);
+        assert_eq!(metric_warns.swap, 34);
         assert_eq!(metric_warns.warnings.len(), 0);
     }
 
@@ -148,6 +168,7 @@ mod tests {
                 cpu_average: true,
                 system_uptime: true,
                 disk: true,
+                swap: true,
             },
             interval: 10,
             log_type: LogType::Discord,

@@ -26,6 +26,7 @@ mod tests {
                 cpu_limit: 0,
                 ram_limit: 0,
                 disk_limit: 0,
+                swap_limit: 0,
             },
             interval: 0,
             log_type: LogType::Discord,
