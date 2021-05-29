@@ -4,20 +4,19 @@ use serenity::{
     model::{id::ChannelId}
 };
 
+
 use super::super::metrics::{
     interval::IntervalMetrics,
     warn::{WarnMetrics, Warn},
 };
 
+
 use sysinfo::{System, SystemExt};
 use super::super::parse_config::{Config, ConfigMode};
 
+
 use tokio::{self};
 mod parsers;
-
-
-
-
 
 
 #[tokio::main]
@@ -80,7 +79,8 @@ async fn send_interval_message(
         discord_channel.send_message(&discord_connection, |msg| {
             msg.embed(|emb| {
                 emb.title("Server Interval Metrics");
-                load_interval_embed(emb, &metrics);
+                emb.color((0, 190, 219));
+                load_interval_embed(emb, &metrics, &system);
                 emb
             });
 
@@ -93,17 +93,17 @@ async fn send_interval_message(
 
 
 // Check each interval metric. If it's above -1 (enabled), append in to the embed.
-fn load_interval_embed(embed: &mut CreateEmbed, metrics: &IntervalMetrics) {
+fn load_interval_embed(embed: &mut CreateEmbed, metrics: &IntervalMetrics, system: &System) {
     if metrics.ram > -1 {
-        embed.field("Used RAM", format!("{} MB", metrics.ram / 1000), false);
+        embed.field("Used RAM", format!("{} MB out of {} MB", metrics.ram / 1000, system.get_total_memory() / 1000), false);
     };
 
     if metrics.swap > -1 {
-        embed.field("Used Swap", format!("{} MB", metrics.swap / 1000), false);
+        embed.field("Used Swap", format!("{} MB out of {} MB", metrics.swap / 1000, system.get_total_swap() / 1000), false);
     }
 
     if metrics.cpu > -1.0 {
-        embed.field("Used CPU", format!("{}%", metrics.cpu), false);
+        embed.field("Used CPU", format!("{:.2}%", metrics.cpu), false);
     }
 
     if metrics.system_uptime > -1 {
@@ -118,7 +118,7 @@ fn load_interval_embed(embed: &mut CreateEmbed, metrics: &IntervalMetrics) {
         embed.field(
             "Average Load",
             format!(
-                    "One minute: {}%, Five minutes: {}%, Fiveteen minutes: {}%", 
+                    "One minute: {:.2}%, Five minutes: {:.2}%, Fiveteen minutes: {:.2}%", 
                     metrics.cpu_average.0, metrics.cpu_average.1, metrics.cpu_average.2
                   ),
                  false
@@ -142,7 +142,8 @@ async fn send_warn_message(
         discord_channel.send_message(&discord_connection, |msg| {
             msg.embed(|emb| {
                 emb.title("Server Warn Metrics");
-                load_warn_embed(emb, &metrics);
+                emb.color((197, 0, 0));
+                load_warn_embed(emb, &metrics, &system);
                 emb
             });
 
@@ -155,14 +156,14 @@ async fn send_warn_message(
 
 
 // Check each warn metric, create a separate embed field for it and set it on the embed.
-fn load_warn_embed(embed: &mut CreateEmbed, metrics: &WarnMetrics) {
+fn load_warn_embed(embed: &mut CreateEmbed, metrics: &WarnMetrics, system: &System) {
     embed.fields(
         metrics.warnings.iter().map(|metric| {
             match metric {
-                &Warn::HighCPU(cpu) => ("CPU Limit Surpassed", format!("{}%", cpu), false),
-                &Warn::HighRAM(ram) => ("RAM Limit Surpassed", format!("{}%", ram), false),
-                &Warn::HighDisk(disk) => ("Disk Limit Surpassed", format!("{}%", disk), false),
-                &Warn::HighSwap(swap) => ("Swap Limit Surpassed", format!("{}%", swap), false),
+                &Warn::HighCPU(cpu) => ("CPU Limit Surpassed", format!("{:.2}%", cpu), false),
+                &Warn::HighRAM(ram) => ("RAM Limit Surpassed", format!("{:.2}% out of {} MB", ram, system.get_total_memory() / 1000), false),
+                &Warn::HighDisk(disk) => ("Disk Limit Surpassed", format!("{:.2}%", disk), false),
+                &Warn::HighSwap(swap) => ("Swap Limit Surpassed", format!("{:.2}% out of {} MB", swap, system.get_total_swap() / 1000), false),
             }
         })
     );
