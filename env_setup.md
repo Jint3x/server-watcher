@@ -43,7 +43,7 @@ swap=true
 <br />
 
 ## Warn Settings
-When using the warn mode, you need to specify the following parameters (which works in integer percentages):
+When using the warn mode, you need to specify the following parameters (which work in integer percentages):
 ```
 ram_limit=10
 cpu_limit=67
