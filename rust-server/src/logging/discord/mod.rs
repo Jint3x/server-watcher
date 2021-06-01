@@ -94,32 +94,34 @@ async fn send_interval_message(
 
 // Check each interval metric. If it's above -1 (enabled), append in to the embed.
 fn load_interval_embed(embed: &mut CreateEmbed, metrics: &IntervalMetrics, system: &System) {
-    if metrics.ram > -1 {
-        embed.field("Used RAM", format!("{} MB out of {} MB", metrics.ram / 1000, system.get_total_memory() / 1000), false);
+    if metrics.ram.is_some() {
+        embed.field("Used RAM", format!("{} MB out of {} MB", metrics.ram.unwrap() / 1000, system.get_total_memory() / 1000), false);
     };
 
-    if metrics.swap > -1 {
-        embed.field("Used Swap", format!("{} MB out of {} MB", metrics.swap / 1000, system.get_total_swap() / 1000), false);
+    if metrics.swap.is_some() {
+        embed.field("Used Swap", format!("{} MB out of {} MB", metrics.swap.unwrap() / 1000, system.get_total_swap() / 1000), false);
     }
 
-    if metrics.cpu > -1.0 {
-        embed.field("Used CPU", format!("{:.2}%", metrics.cpu), false);
+    if metrics.cpu.is_some() {
+        embed.field("Used CPU", format!("{:.2}%", metrics.cpu.unwrap()), false);
     }
 
-    if metrics.system_uptime > -1 {
-        embed.field("System Uptime", format!("{} minutes", metrics.system_uptime / 60), false);
+    if metrics.system_uptime.is_some() {
+        embed.field("System Uptime", format!("{} minutes", metrics.system_uptime.unwrap() / 60), false);
     }
 
-    if metrics.disk > -1 {
-        embed.field("Used System Space:", format!("{} MB", metrics.disk), false);
+    if metrics.disk.is_some() {
+        embed.field("Used System Space:", format!("{} MB", metrics.disk.unwrap()), false);
     }
 
-    if metrics.cpu_average.0 > -1.0 {
+    if metrics.cpu_average.is_some() {
+        let cpu_avg = metrics.cpu_average.unwrap();
+
         embed.field(
             "Average Load",
             format!(
                     "One minute: {:.2}%, Five minutes: {:.2}%, Fiveteen minutes: {:.2}%", 
-                    metrics.cpu_average.0, metrics.cpu_average.1, metrics.cpu_average.2
+                    cpu_avg.0, cpu_avg.1, cpu_avg.2
                   ),
                  false
         );
