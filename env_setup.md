@@ -1,5 +1,5 @@
 # Setting up your .env file
-In order to use one of the two logging programs, you need to have an `.env` file **in the root of the program type you use (node/rust)**
+In order to use one of the two logging programs, you need to have an `.env` file **which will be used relative to your current working directory**. 
 
 <br />
 <br />

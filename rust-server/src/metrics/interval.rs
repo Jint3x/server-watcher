@@ -5,22 +5,22 @@ use super::{get_used_disk_space};
 #[derive(Debug, PartialEq)]
 pub struct IntervalMetrics {
     // Currently used ram
-    pub ram: i64,
+    pub ram: Option<u64>,
 
     // Currently used CPU
-    pub cpu: f32,
+    pub cpu: Option<f32>,
 
     // How long has the host system been running for
-    pub system_uptime: i64,
+    pub system_uptime: Option<u64>,
 
     // CPU average for the past 1, 5 and 15 minutes.
-    pub cpu_average: (f64, f64, f64),
+    pub cpu_average: Option<(f64, f64, f64)>,
 
     // Currently used disk space [In MB]
-    pub disk: i64,
+    pub disk: Option<u64>,
 
     // Currently used Swap in KB
-    pub swap: i64,
+    pub swap: Option<u64>,
 }
 
 
@@ -38,28 +38,28 @@ impl IntervalMetrics {
             // Create a struct which will be filled with actual values only if the passed config has them enabled
             // -1 is used as an error (false) code.
             let mut metrics = IntervalMetrics { 
-                ram: -1,
-                cpu: -1.0,
-                system_uptime: -1,
-                cpu_average: (-1.0, -1.0, -1.0),
-                disk: -1,
-                swap: -1,
+                ram: None,
+                cpu: None,
+                system_uptime: None,
+                cpu_average: None,
+                disk: None,
+                swap: None,
             };
         
             // Check each metric, if it is enabled, set it.
-            if ram { metrics.ram = system.get_used_memory() as i64 };
+            if ram { metrics.ram = Some(system.get_used_memory() as u64) };
 
-            if cpu { metrics.cpu = system.get_global_processor_info().get_cpu_usage() }
+            if cpu { metrics.cpu = Some(system.get_global_processor_info().get_cpu_usage()) }
             
-            if system_uptime { metrics.system_uptime = system.get_uptime() as i64 }
+            if system_uptime { metrics.system_uptime = Some(system.get_uptime()) }
 
-            if disk { metrics.disk = get_used_disk_space(system.get_disks()) }
+            if disk { metrics.disk = Some(get_used_disk_space(system.get_disks()) as u64) }
 
-            if swap { metrics.swap = system.get_used_swap() as i64 }
+            if swap { metrics.swap = Some(system.get_used_swap()) }
 
             if cpu_average { 
                 let avg_load = system.get_load_average();
-                metrics.cpu_average = (avg_load.one, avg_load.five, avg_load.fifteen);
+                metrics.cpu_average = Some((avg_load.one, avg_load.five, avg_load.fifteen));
             }
 
             metrics
@@ -73,19 +73,19 @@ impl IntervalMetrics {
     pub fn update_metrics(&mut self, system: &mut sysinfo::System) {
         system.refresh_all();
         
-        if self.ram > -1 { self.ram = system.get_used_memory() as i64 }
+        if self.ram.is_some() { self.ram = Some(system.get_used_memory()) }
 
-        if self.cpu > -1.0 { self.cpu = system.get_global_processor_info().get_cpu_usage() }
+        if self.cpu.is_some() { self.cpu = Some(system.get_global_processor_info().get_cpu_usage()) }
 
-        if self.system_uptime > -1 { self.system_uptime = system.get_uptime() as i64 }
+        if self.system_uptime.is_some() { self.system_uptime = Some(system.get_uptime()) }
 
-        if self.disk > -1 { self.disk = get_used_disk_space(system.get_disks()) }
+        if self.disk.is_some() { self.disk = Some(get_used_disk_space(system.get_disks()) as u64 ) }
 
-        if self.swap > -1 { self.swap = system.get_used_swap() as i64 } 
+        if self.swap.is_some() { self.swap = Some(system.get_used_swap()) } 
 
-        if self.cpu_average.0 > -1.0 {
+        if self.cpu_average.is_some() {
             let avg_load = system.get_load_average();
-            self.cpu_average = (avg_load.one, avg_load.five, avg_load.fifteen);
+            self.cpu_average = Some((avg_load.one, avg_load.five, avg_load.fifteen));
         }
     } 
 }
@@ -120,12 +120,12 @@ mod tests {
 
         let metrics = IntervalMetrics::new(&config, &system);
 
-        assert_ne!(metrics.ram, -1);
-        assert_ne!(metrics.disk, -1);
-        assert_ne!(metrics.cpu, -1.0);
-        assert_ne!(metrics.cpu_average, (-1.0, -1.0, -1.0));
-        assert_ne!(metrics.system_uptime, -1);
-        assert_ne!(metrics.swap, -1);
+        assert_eq!(metrics.ram.is_some(), true);
+        assert_eq!(metrics.disk.is_some(), true);
+        assert_eq!(metrics.cpu.is_some(), true);
+        assert_eq!(metrics.cpu_average.is_some(), true);
+        assert_eq!(metrics.system_uptime.is_some(), true);
+        assert_eq!(metrics.swap.is_some(), true);
     }
 
 
@@ -174,12 +174,12 @@ mod tests {
 
         let metrics = IntervalMetrics::new(&config, &system);
 
-        assert_ne!(metrics.ram, -1);
-        assert_ne!(metrics.cpu, -1.0);
-        assert_eq!(metrics.cpu_average, (-1.0, -1.0, -1.0));
-        assert_eq!(metrics.system_uptime, -1);
-        assert_ne!(metrics.disk, -1);
-        assert_eq!(metrics.swap, -1);
+        assert_eq!(metrics.ram.is_some(), true);
+        assert_eq!(metrics.cpu.is_some(), true);
+        assert_eq!(metrics.disk.is_some(), true);
+        assert_eq!(metrics.cpu_average.is_none(), true);
+        assert_eq!(metrics.system_uptime.is_none(), true);
+        assert_eq!(metrics.swap.is_none(), true);
     }
 
 

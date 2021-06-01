@@ -32,6 +32,5 @@ issue.
 
 ### Compile with --release
 If you want to use it as an executable in release mode, go until step 3 and instead of `cargo run`,
-type `cargo build --release`. Then go to your 
-`/target/release` folder and paste your .env file there. **The `.env` file needs to be on the same level of your current working directory**
+type `cargo build --release`. **The `.env` file is found based on your current working directory.**
 
