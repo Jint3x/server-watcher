@@ -5,5 +5,5 @@ pub mod metrics;
 pub fn start() {
     let config = parse_config::create_config();
     
-    logging::discord::start(config);
+    logging::file::start(config);
 }
