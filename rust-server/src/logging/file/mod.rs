@@ -1,3 +1,4 @@
+use crate::metrics::warn::Warn;
 use crate::parse_config::{ Config, ConfigMode };
 use crate::metrics::{interval::IntervalMetrics, warn::WarnMetrics};
 use sysinfo::{self, System, SystemExt};
@@ -61,6 +62,7 @@ fn log_interval(
 
     loop {
         std::thread::sleep(std::time::Duration::from_secs(config.interval as u64));
+        metrics.update_metrics(&mut system);
 
         let next_name = find_next_free_name(base_file, &dir);
         let metrics_formatted = format_interval_metrics_text(&metrics, &system);
@@ -68,7 +70,6 @@ fn log_interval(
         let mut file = fs::File::create(file_path).expect("Couldn't create a file at the expected logging directory");
 
         file.write_all(metrics_formatted.as_bytes()).expect("Couldn't write information to a logging file");
-        metrics.update_metrics(&mut system);
     }
 }
 
@@ -115,18 +116,61 @@ fn format_interval_metrics_text(metrics: &IntervalMetrics, system: &System) -> S
 
 fn log_warn(
     dir: String, 
-    system: System, 
-    metrics: WarnMetrics,
+    mut system: System, 
+    mut metrics: WarnMetrics,
     config: Config,
 ) {
-    /*
-        Algorithm:
-        1: Create/Check for the path/warn folder
-        2: Loop through all files in the directory, find the biggest 'log' file, like a number: 
-        log_1, log_2, log_3, .... until the last log file, then the new element would be log_n+1
-        3: Extract all possible warnings and format them in a variable.
-        4: Save the message.
-    */
+    // Create the logging path if it does not exist.
+    fs::create_dir_all(&dir).expect("Couldn't create the specified logging directory");
+    let base_file = "log";
+
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(config.interval as u64));
+        metrics.update_warns(&mut system);
+
+
+        let next_name = find_next_free_name(base_file, &dir);
+        let metrics_formatted = format_warn_metrics_text(&metrics, &system);
+        let file_path = PathBuf::from(&dir).join(next_name);
+
+        // If a warn happened, save it in a file.
+        if !metrics_formatted.trim().is_empty() {
+            let mut file = fs::File::create(file_path).expect("Couldn't create a file at the expected logging directory");
+            file.write_all(metrics_formatted.as_bytes()).expect("Couldn't write information to a logging file");
+        }
+    }
+}
+
+
+fn format_warn_metrics_text(metrics: &WarnMetrics, system: &System) -> String {
+    let mut warn_list = Vec::new();
+
+    metrics.warnings.iter().for_each(|warn| {
+        match warn {
+            &Warn::HighCPU(cpu) => {
+                let message = format!("High CPU Usage: {:.2}%", cpu);
+                warn_list.push(message)
+            },
+
+            &Warn::HighRAM(ram) => {
+                let message = format!("High RAM Usage: {}% out of {} MB", ram, system.get_total_memory() / 1000);
+                warn_list.push(message)
+            },
+
+
+            &Warn::HighDisk(disk) => {
+                let message = format!("High Disk Space Usage: {:.2}%", disk);
+                warn_list.push(message)
+            }, 
+
+            &Warn::HighSwap(swap) => {
+                let message = format!("High Swap Usage: {:.2}% out of {} MB", swap, system.get_total_swap() / 1000);
+                warn_list.push(message)
+            },
+        }
+    });
+
+    warn_list.join("\n")
 }
 
 
@@ -161,10 +205,10 @@ fn find_next_free_name(filename: &str, dir: &str) -> String {
 mod tests {
     use std::{fs};
     use sysinfo::{SystemExt, System};
-    use crate::metrics::{interval::IntervalMetrics};
+    use crate::metrics::{interval::IntervalMetrics, warn::WarnMetrics, warn::Warn};
     use crate::parse_config::{Config, ConfigMode, LogType, LogCredentials};
 
-    use super::{find_next_free_name, format_interval_metrics_text};
+    use super::{find_next_free_name, format_interval_metrics_text, format_warn_metrics_text};
 
 
     #[test]
@@ -249,6 +293,41 @@ mod tests {
 
         for (ind, &value) in separated_metrics.iter().enumerate() {
             assert_eq!(value.starts_with(metric_messages[ind]), true);
+        }
+    }
+
+
+    #[test]
+    fn format_warn_metrics_text_formats_some() {
+        let system = System::new_all();
+        let config = Config {
+            mode: ConfigMode::ConfigWarn {
+                ram_limit: 40,
+                cpu_limit: 45,
+                disk_limit: 50,
+                swap_limit: 34,
+            },
+            interval: 10,
+            log_type: LogType::File,
+            log_credentials: LogCredentials::FileLog {
+                path: "C:/random/path".into()
+            }
+        };
+
+        let mut metrics = WarnMetrics::new(&config);
+        metrics.warnings = vec![
+            Warn::HighRAM(50.0),
+            Warn::HighCPU(70.0),
+        ];
+
+        let message = format_warn_metrics_text(&metrics, &system);
+        let separated_warns = message.lines().collect::<Vec<&str>>();
+        let metric_messages = vec!["High RAM Usage:", "High CPU Usage:"];
+
+        assert_eq!(separated_warns.len(), 2);
+
+        for (ind, &val) in separated_warns.iter().enumerate() {
+            assert_eq!(val.starts_with(metric_messages[ind]), true);
         }
     }
 }
