@@ -56,17 +56,19 @@ fn log_interval(
     mut metrics: IntervalMetrics,
     config: Config,
 ) {
-    // Create the logging path if it does not exist.
-    fs::create_dir_all(&dir).expect("Couldn't create the specified logging directory");
-    let base_file = "log";
+    let interval_path = PathBuf::from(dir).join("./interval");
 
+    // Create the logging path if it does not exist.
+    fs::create_dir_all(&interval_path).expect("Couldn't create the specified logging directory");
+    let base_file = "log";
+    println!("{:?}", interval_path);
     loop {
         std::thread::sleep(std::time::Duration::from_secs(config.interval as u64));
         metrics.update_metrics(&mut system);
 
-        let next_name = find_next_free_name(base_file, &dir);
+        let next_name = find_next_free_name(base_file, &interval_path.to_str().unwrap());
         let metrics_formatted = format_interval_metrics_text(&metrics, &system);
-        let file_path = PathBuf::from(&dir).join(next_name);
+        let file_path = PathBuf::from(&interval_path).join(next_name);
         let mut file = fs::File::create(file_path).expect("Couldn't create a file at the expected logging directory");
 
         file.write_all(metrics_formatted.as_bytes()).expect("Couldn't write information to a logging file");
@@ -90,13 +92,13 @@ fn format_interval_metrics_text(metrics: &IntervalMetrics, system: &System) -> S
     }
 
     if metrics.cpu.is_some() {
-        let message = format!("Used CPU: {:.2}", metrics.cpu.unwrap());
+        let message = format!("Used CPU: {:.2}%", metrics.cpu.unwrap());
         metric_list.push(message); 
     }
 
     if metrics.cpu_average.is_some() {
         let (min, five_min, fteen_min) = metrics.cpu_average.unwrap();
-        let message = format!("CPU Average: 1 minute - {:.2}, 5 minutes - {:.2}, 15 minutes - {:.2}", min, five_min, fteen_min);
+        let message = format!("CPU Average: 1 minute - {:.2}%, 5 minutes - {:.2}%, 15 minutes - {:.2}%", min, five_min, fteen_min);
         metric_list.push(message)
     }
 
@@ -120,8 +122,10 @@ fn log_warn(
     mut metrics: WarnMetrics,
     config: Config,
 ) {
+    let warn_path = PathBuf::from(dir).join("./warn");
+
     // Create the logging path if it does not exist.
-    fs::create_dir_all(&dir).expect("Couldn't create the specified logging directory");
+    fs::create_dir_all(&warn_path).expect("Couldn't create the specified logging directory");
     let base_file = "log";
 
     loop {
@@ -129,9 +133,9 @@ fn log_warn(
         metrics.update_warns(&mut system);
 
 
-        let next_name = find_next_free_name(base_file, &dir);
+        let next_name = find_next_free_name(base_file, &warn_path.to_str().unwrap());
         let metrics_formatted = format_warn_metrics_text(&metrics, &system);
-        let file_path = PathBuf::from(&dir).join(next_name);
+        let file_path = PathBuf::from(&warn_path).join(next_name);
 
         // If a warn happened, save it in a file.
         if !metrics_formatted.trim().is_empty() {
@@ -153,7 +157,7 @@ fn format_warn_metrics_text(metrics: &WarnMetrics, system: &System) -> String {
             },
 
             &Warn::HighRAM(ram) => {
-                let message = format!("High RAM Usage: {}% out of {} MB", ram, system.get_total_memory() / 1000);
+                let message = format!("High RAM Usage: {:.2}% out of {} MB", ram, system.get_total_memory() / 1000);
                 warn_list.push(message)
             },
 
