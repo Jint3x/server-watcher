@@ -1,6 +1,6 @@
 ## Rust Server-Watcher 
-Watch your server/computer and get notified when 
-resource limits are above a specified % or simply be notified about their metrics on an configurable interval.
+Watch your server/computer and get notified when  resource limits are above a specified % or simply be notified
+about their metrics on an configurable interval.
 
 ## Tested on
 - Windows 10

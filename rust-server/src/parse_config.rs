@@ -103,12 +103,12 @@ fn get_warn_mode() -> ConfigMode {
     let disk_limit = std::env::var("disk_limit")
     .expect("cpu_limit variable not specified")
     .parse::<u32>()
-    .expect("Couldn't parse the cpu_limit to a number");
+    .expect("Couldn't parse the disk_limit to a number");
 
     let swap_limit = std::env::var("swap_limit")
     .expect("cpu_limit variable not specified")
     .parse::<u32>()
-    .expect("Couldn't parse the cpu_limit to a number");
+    .expect("Couldn't parse the swap_limit to a number");
 
     if ram_limit > 100 || cpu_limit > 100 { panic!("The ram/cpu limit cannot exceed 100%") };
 
@@ -181,7 +181,8 @@ pub fn parse_credentials(log_type: LogType) -> LogCredentials {
 }
 
 
-
+// These tests need to run on a single thread, because they use env variables, which collide with each other 
+// when used with more than 1 thread. For this reason, you usually need to run the tests with `cargo test -- --test-threads=1`
 #[cfg(test)]
 mod tests {
     use std::env::{set_var, remove_var};

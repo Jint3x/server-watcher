@@ -61,7 +61,7 @@ fn log_interval(
     // Create the logging path if it does not exist.
     fs::create_dir_all(&interval_path).expect("Couldn't create the specified logging directory");
     let base_file = "log";
-    println!("{:?}", interval_path);
+    
     loop {
         std::thread::sleep(std::time::Duration::from_secs(config.interval as u64));
         metrics.update_metrics(&mut system);
@@ -150,24 +150,24 @@ fn format_warn_metrics_text(metrics: &WarnMetrics, system: &System) -> String {
     let mut warn_list = Vec::new();
 
     metrics.warnings.iter().for_each(|warn| {
-        match warn {
-            &Warn::HighCPU(cpu) => {
+        match *warn {
+            Warn::HighCPU(cpu) => {
                 let message = format!("High CPU Usage: {:.2}%", cpu);
                 warn_list.push(message)
             },
 
-            &Warn::HighRAM(ram) => {
+            Warn::HighRAM(ram) => {
                 let message = format!("High RAM Usage: {:.2}% out of {} MB", ram, system.get_total_memory() / 1000);
                 warn_list.push(message)
             },
 
 
-            &Warn::HighDisk(disk) => {
+            Warn::HighDisk(disk) => {
                 let message = format!("High Disk Space Usage: {:.2}%", disk);
                 warn_list.push(message)
             }, 
 
-            &Warn::HighSwap(swap) => {
+            Warn::HighSwap(swap) => {
                 let message = format!("High Swap Usage: {:.2}% out of {} MB", swap, system.get_total_swap() / 1000);
                 warn_list.push(message)
             },
@@ -195,7 +195,7 @@ fn find_next_free_name(filename: &str, dir: &str) -> String {
 
     // Loop and increment the name until a non taken file name spot is found
     loop {
-        new_name = String::from(format!("{}_{}.txt", filename, num_of_files));
+        new_name = format!("{}_{}.txt", filename, num_of_files);
         if dir_files.get(&new_name).is_none() { break }
 
         num_of_files += 1;
