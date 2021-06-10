@@ -1,5 +1,5 @@
 # Rust/Nodejs Server Watcher
-A small server that can work on both nodejs or rust (whichever one is more suitable) that can listen to different resources on your server (such as CPU, RAM) and notify you through different logging methods (discord only for now) about surpassing configureable limits. It can also notify you on an interval, regardless of the amount of system resources used. <br /> <br />
+A small software that can work on both nodejs or rust (whichever one is more suitable) that can listen to different resources on your server (such as CPU, RAM) and notify you through different logging methods (discord and file logging) about surpassing configureable limits. It can also notify you on an interval, regardless of the amount of system resources used. <br /> <br />
 
 
 ## Usage  

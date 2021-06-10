@@ -1,3 +1,4 @@
 /rust-server/target
 /rust-server/.env
+/rust-server/file_logging
 /node-server/node_modules

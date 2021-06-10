@@ -22,12 +22,17 @@ pub enum LogCredentials {
     DiscordLog {
         key: String,
         channel: u64,
+    },
+
+    FileLog {
+        path: String,
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LogType {
-    Discord
+    Discord,
+    File,
 }
 
 #[derive(Debug, PartialEq)]
@@ -98,12 +103,12 @@ fn get_warn_mode() -> ConfigMode {
     let disk_limit = std::env::var("disk_limit")
     .expect("cpu_limit variable not specified")
     .parse::<u32>()
-    .expect("Couldn't parse the cpu_limit to a number");
+    .expect("Couldn't parse the disk_limit to a number");
 
     let swap_limit = std::env::var("swap_limit")
     .expect("cpu_limit variable not specified")
     .parse::<u32>()
-    .expect("Couldn't parse the cpu_limit to a number");
+    .expect("Couldn't parse the swap_limit to a number");
 
     if ram_limit > 100 || cpu_limit > 100 { panic!("The ram/cpu limit cannot exceed 100%") };
 
@@ -142,6 +147,7 @@ pub fn get_log_type() -> Result<LogType, ErrorLogType> {
 
     match &*log {
         "discord" => Ok(LogType::Discord),
+        "file" => Ok(LogType::File),
         _ => Err(ErrorLogType::TypeNonExistent)
     }
 }
@@ -158,12 +164,25 @@ pub fn parse_credentials(log_type: LogType) -> LogCredentials {
                 key: discord_key,
                 channel: discord_channel.parse::<u64>().expect("Couldn't convert the discord channel to a number")
             }
+        },
+
+        LogType::File => {
+            let directory_string = std::env::var("logging_directory").expect("Couldn't get the logging_directory variable");
+            let directory_path = std::path::Path::new(&directory_string);
+
+            if !directory_path.is_absolute() { panic!("The logging_directory config variable needs to be an absolute path to a directory") };
+            if !directory_path.is_dir() { panic!("The logging_directory config variable needs to point to a directory (folder)") }
+
+            LogCredentials::FileLog {
+                path: directory_string
+            }
         }
     }
 }
 
 
-
+// These tests need to run on a single thread, because they use env variables, which collide with each other 
+// when used with more than 1 thread. For this reason, you usually need to run the tests with `cargo test -- --test-threads=1`
 #[cfg(test)]
 mod tests {
     use std::env::{set_var, remove_var};
@@ -303,7 +322,7 @@ mod tests {
 
 
     #[test]
-    fn parse_credentials_parses() {
+    fn parse_credentials_discord_parses() {
         set_var("discord_key", "my_special_key");
         set_var("discord_channel", "123456789");
 
@@ -340,5 +359,37 @@ mod tests {
         set_var("discord_key", "my_special_key");
         set_var("discord_channel", "will not work");
         parse_credentials(LogType::Discord);
+    }
+
+
+    #[test]
+    fn parse_credentials_file_parses() {
+        let curr_dir = std::env::current_dir().unwrap();
+        set_var("logging_directory", &curr_dir);
+
+        let credentials = parse_credentials(LogType::File);
+        let test_credentials = LogCredentials::FileLog { path: curr_dir.to_str().unwrap().to_string() };
+
+        assert_eq!(credentials, test_credentials);
+    }
+
+
+    #[test]
+    #[should_panic = "The logging_directory config variable needs to be an absolute path to a directory"]
+    fn parse_credentials_file_not_absolute() {
+        let relative_dir = "../../";
+        set_var("logging_directory", relative_dir);
+
+        parse_credentials(LogType::File);
+    }
+
+
+    #[test]
+    #[should_panic = "The logging_directory config variable needs to point to a directory (folder)"]
+    fn parse_credentials_file_not_dir() {
+        let curr_file = std::env::current_exe().unwrap();
+        set_var("logging_directory", curr_file);
+
+        parse_credentials(LogType::File);
     }
 }
